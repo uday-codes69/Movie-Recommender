@@ -1,23 +1,37 @@
 import streamlit as st
 import pickle
 import pandas as pd
-import joblib
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
-# Load data
-movies = pd.DataFrame(pickle.load(open('movies.pkl', 'rb')))
-similarity = joblib.load('similarity.pkl')
+# Load local data (movies.pkl should have 'title' and 'tags')
+movies_dict = pickle.load(open('movies.pkl', 'rb'))
+movies = pd.DataFrame(movies_dict)
+
+# Compute similarity on the fly
+cv = CountVectorizer(max_features=5000, stop_words='english')
+vectors = cv.fit_transform(movies['tags']).toarray()
+similarity = cosine_similarity(vectors)
 
 # Recommend function
 def recommend(movie):
-    idx = movies[movies['title'] == movie].index[0]
-    distances = similarity[idx]
+    if movie not in movies['title'].values:
+        return []
+    movie_index = movies[movies['title'] == movie].index[0]
+    distances = similarity[movie_index]
     movie_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
-    return movies.iloc[[i[0] for i in movie_list]]['title'].tolist()
+    return [movies.iloc[i[0]].title for i in movie_list]
 
-# UI
-st.title("🎬 Movie Recommender")
-movie_name = st.selectbox("Select a movie", movies['title'].values)
+# Streamlit UI
+st.title("🎬 Simple Movie Recommender")
+
+movie_name = st.selectbox("Choose a movie", movies['title'].values)
 
 if st.button("Recommend"):
-    for m in recommend(movie_name):
-        st.write(m)
+    recs = recommend(movie_name)
+    if recs:
+        st.write("### Recommended Movies:")
+        for m in recs:
+            st.write(m)
+    else:
+        st.warning("Movie not found in database!")
