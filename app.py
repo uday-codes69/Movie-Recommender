@@ -1,27 +1,23 @@
 import streamlit as st
 import pickle
 import pandas as pd
+import joblib
 
-# Load local data
-movies_dict = pickle.load(open('movies.pkl', 'rb'))
-movies = pd.DataFrame(movies_dict)
-
-similarity = pickle.load(open('similarity.pkl', 'rb'))
+# Load data
+movies = pd.DataFrame(pickle.load(open('movies.pkl', 'rb')))
+similarity = joblib.load('similarity.pkl')
 
 # Recommend function
 def recommend(movie):
-    movie_index = movies[movies['title'] == movie].index[0]
-    distances = similarity[movie_index]
+    idx = movies[movies['title'] == movie].index[0]
+    distances = similarity[idx]
     movie_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
-    return [movies.iloc[i[0]].title for i in movie_list]
+    return movies.iloc[[i[0] for i in movie_list]]['title'].tolist()
 
-# Streamlit UI
-st.title("🎬 Simple Movie Recommender")
-
-movie_name = st.selectbox("Choose a movie", movies['title'].values)
+# UI
+st.title("🎬 Movie Recommender")
+movie_name = st.selectbox("Select a movie", movies['title'].values)
 
 if st.button("Recommend"):
-    recs = recommend(movie_name)
-    st.write("### Recommended Movies:")
-    for m in recs:
+    for m in recommend(movie_name):
         st.write(m)
